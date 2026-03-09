@@ -30,14 +30,20 @@
   body {
     background: #1a1a1a;
     font-family: 'Ubuntu Mono', 'Courier New', monospace;
-    min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;   /* scroll safety net */
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
-    padding: 20px 0 40px;
   }
 
-  #app { width: 100%; max-width: 460px; padding: 0 6px; }
+  #app {
+    width: 100%;
+    max-width: 460px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
 
   /* Window chrome */
   .titlebar {
@@ -61,14 +67,31 @@
     border: 1px solid #111;
     border-top: none;
     border-radius: 0 0 6px 6px;
-    padding: 10px 10px 16px;
+    padding: 8px 8px 8px;
     color: var(--text);
-    min-height: 300px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  /* Game screen fills terminal height */
+  #screen-game { flex: 1; }
+
+  /* Board wrap takes all remaining space */
+  .boardwrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    margin: 2px 0;
   }
 
   /* Screens */
-  .screen { display: none; }
-  .screen.active { display: block; }
+  .screen { display: none !important; }
+  .screen.active { display: block !important; }
+
+  /* Game screen overrides to flex so board can flex-grow */
+  #screen-game.active { display: flex !important; flex-direction: column; }
 
   /* Prompt */
   .prompt { font-size: 14px; line-height: 1.6; margin-bottom: 2px; }
@@ -137,7 +160,6 @@
   .scores { margin-bottom: 2px; }
 
   /* Board — fills full terminal width, font size set by JS */
-  .boardwrap { margin: 4px 0; }
   .bpre {
     font-family: 'Ubuntu Mono', monospace;
     font-size: 16px; /* overridden by fitBoard() */
@@ -172,7 +194,8 @@
   /* Status */
   .status { font-size: 13px; line-height: 1.6; min-height: 20px; margin: 2px 0; }
   .st-wait { color: var(--dim); }
-  .st-turn { color: var(--green); }
+  .st-p1   { color: var(--cyan); }
+  .st-p2   { color: var(--orange); }
   .st-win  { color: var(--ubuntu); font-weight: 700; }
   .st-lose { color: var(--red); }
   .st-draw { color: var(--dim); }
@@ -656,10 +679,10 @@ function renderGameState() {
     setCols(false); document.getElementById('new-game-btn').style.display='block';
   } else {
     if (turn===myPlayer) {
-      setStatus(`Player ${myPlayer}'s turn (${sym(myPlayer)})`, 'st-turn');
+      setStatus(`Player ${myPlayer}'s turn (${sym(myPlayer)})`, myPlayer===P1?'st-p1':'st-p2');
       setCols(true, board);
     } else {
-      setStatus(`Player ${turn}'s turn (${sym(turn)})`, 'st-wait');
+      setStatus(`Player ${turn}'s turn (${sym(turn)})`, turn===P1?'st-p1':'st-p2');
       setCols(false);
     }
   }
@@ -704,21 +727,29 @@ function leaveGame() {
 function fitBoard() {
   const wrap = document.getElementById('board-display');
   if (!wrap) return;
-  const containerWidth = wrap.parentElement.clientWidth;
 
-  // Measure actual character width at current font size by rendering one char
+  // Measure actual char dimensions at 16px
   const probe = document.createElement('span');
   probe.style.cssText = 'font-family:"Ubuntu Mono",monospace;font-size:16px;position:absolute;visibility:hidden;white-space:pre';
   probe.textContent = 'X';
   document.body.appendChild(probe);
   const charW = probe.getBoundingClientRect().width;
+  const charH = probe.getBoundingClientRect().height;
   document.body.removeChild(probe);
 
-  // Board row is exactly 15 chars: |X X X X X X X|
-  // Scale font-size so 15 chars = containerWidth exactly
+  // ── Horizontal: font-size so 15 chars fill the container width ──
+  const containerWidth = wrap.parentElement.clientWidth;
   const fs = Math.floor((containerWidth / charW) * 16 / 15);
   wrap.style.fontSize = fs + 'px';
 
+  // ── Vertical: line-height so 10 board lines fit in ~55% of viewport ──
+  // Board: hdr + top-border + 6 rows + bot-border + footer = 10 lines
+  // Target ~55vh for the board, leaving room for scoreboard/status/info
+  const targetBoardPx = window.innerHeight * 0.55;
+  const lineHeightPx  = targetBoardPx / 10;
+  const lh = lineHeightPx / fs;
+  // Clamp between 0.85 (tight) and 1.8 (loose)
+  wrap.style.lineHeight = Math.max(0.85, Math.min(1.8, lh)).toFixed(3);
 }
 
 window.addEventListener('resize', fitBoard);
