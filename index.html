@@ -37,7 +37,7 @@
     padding: 20px 0 40px;
   }
 
-  #app { width: 100%; max-width: 460px; padding: 0 12px; }
+  #app { width: 100%; max-width: 460px; padding: 0 6px; }
 
   /* Window chrome */
   .titlebar {
@@ -61,7 +61,7 @@
     border: 1px solid #111;
     border-top: none;
     border-radius: 0 0 6px 6px;
-    padding: 16px 14px 20px;
+    padding: 10px 10px 16px;
     color: var(--text);
     min-height: 300px;
   }
@@ -134,16 +134,16 @@
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
   /* Scoreboard */
-  .scores { margin-bottom: 6px; }
+  .scores { margin-bottom: 2px; }
 
-  /* Board */
-  .boardwrap { margin: 6px 0; }
+  /* Board — fills full terminal width, font size set by JS */
+  .boardwrap { margin: 4px 0; }
   .bpre {
     font-family: 'Ubuntu Mono', monospace;
-    font-size: clamp(13px, 3.8vw, 17px);
-    line-height: 1.55;
+    font-size: 16px; /* overridden by fitBoard() */
+    line-height: 1.5;
     white-space: pre;
-    display: inline-block;
+    display: block;
     color: var(--text);
   }
   /* Clickable column header numbers */
@@ -167,34 +167,10 @@
   .cw  { animation: wblink 0.45s step-end infinite; font-weight: 700; }
   @keyframes wblink { 0%,100%{opacity:1} 50%{opacity:0.1} }
 
-  /* Column buttons */
-  .colbtns {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-    margin: 8px 0;
-  }
-  .cbtn {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    color: var(--dim);
-    font-family: 'Ubuntu Mono', monospace;
-    font-size: 16px;
-    padding: 11px 0;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: all 0.08s;
-  }
-  .cbtn.active { border-color: #666; color: var(--text); }
-  .cbtn:hover:not(:disabled), .cbtn:active:not(:disabled) {
-    background: #3d1500;
-    border-color: var(--ubuntu);
-    color: var(--ubuntu);
-  }
-  .cbtn:disabled { opacity: 0.25; cursor: not-allowed; }
+
 
   /* Status */
-  .status { font-size: 14px; line-height: 1.8; min-height: 22px; }
+  .status { font-size: 13px; line-height: 1.6; min-height: 20px; margin: 2px 0; }
   .st-wait { color: var(--dim); }
   .st-turn { color: var(--green); }
   .st-win  { color: var(--ubuntu); font-weight: 700; }
@@ -202,7 +178,7 @@
   .st-draw { color: var(--dim); }
 
   /* Move string display */
-  .movestr { color: var(--border); font-size: 12px; margin-top: 4px; }
+  .movestr { color: var(--border); font-size: 11px; margin-top: 2px; }
   .movestr b { color: #666; }
 
   hr.t { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
@@ -316,43 +292,24 @@
     <!-- ── GAME ───────────────────────────────────── -->
     <div id="screen-game" class="screen">
 
-      <div class="scores">
-        <div class="odash">------------------------------</div>
-        <div class="out">&nbsp;&nbsp;SCOREBOARD</div>
-        <div class="odash">------------------------------</div>
-        <div class="out">Player 1 <span class="p1c">(X)</span>: <b id="score-p1">0</b></div>
-        <div class="out">Player 2 <span class="p2c">(0)</span>: <b id="score-p2">0</b></div>
-        <div class="odash">------------------------------</div>
-      </div>
+      <div class="out" style="margin-bottom:4px;font-size:13px">Player 1 <span class="p1c">(X)</span>: <b id="score-p1">0</b> &nbsp;&nbsp; Player 2 <span class="p2c">(0)</span>: <b id="score-p2">0</b></div>
 
       <div class="boardwrap">
         <div class="bpre" id="board-display"></div>
       </div>
 
-      <div class="colbtns" id="col-buttons">
-        <button class="cbtn" onclick="playColumn(0)">1</button>
-        <button class="cbtn" onclick="playColumn(1)">2</button>
-        <button class="cbtn" onclick="playColumn(2)">3</button>
-        <button class="cbtn" onclick="playColumn(3)">4</button>
-        <button class="cbtn" onclick="playColumn(4)">5</button>
-        <button class="cbtn" onclick="playColumn(5)">6</button>
-        <button class="cbtn" onclick="playColumn(6)">7</button>
-      </div>
+
 
       <div class="status" id="game-status"></div>
 
       <!-- Raw move string — shows exactly what Firebase stores -->
       <div class="movestr"><b>moves: </b>"<span id="move-str-display"></span>"</div>
 
-      <hr class="t">
-
       <button class="mbtn" id="new-game-btn" onclick="requestNewGame()" style="display:none">
         <span class="pd">&gt;&nbsp;</span><span class="mt mt-c">Play again? (y/n): y ↵</span>
       </button>
 
-      <button class="mbtn" onclick="leaveGame()">
-        <span class="pd">&gt;&nbsp;</span><span class="mt mt-r">^C&nbsp;&nbsp;Leave game</span>
-      </button>
+
 
       <div class="odim" style="margin-top:8px;font-size:12px">
         Room: <b id="game-room-code">----</b> &nbsp;|&nbsp; You are: <b id="player-badge">?</b> &nbsp;|&nbsp;<span class="fb-dot" id="fb-dot"></span><span class="fb-status" id="fb-status">connecting...</span>
@@ -489,8 +446,15 @@ function renderBoard(board, winPos) {
     }
     out += row + '|\n';
   }
-  out += '+' + '-'.repeat(COLS*2-1) + '+';
+  out += '+' + '-'.repeat(COLS*2-1) + '\n';
+  // Footer row — mirrors header, same clickable col-hdr spans
+  const footerCells = Array.from({length:COLS},(_,i) =>
+    `<span class="col-hdr" data-col="${i}" onclick="playColumn(${i})">${i+1}</span>`
+  ).join(' ');
+  out += ' ' + footerCells;
   document.getElementById('board-display').innerHTML = out;
+
+  fitBoard();
 }
 
 // ================================================================
@@ -508,12 +472,6 @@ function setStatus(msg, cls) {
 }
 
 function setCols(enabled, board) {
-  document.querySelectorAll('.cbtn').forEach((btn,i) => {
-    const full = board ? colFull(board,i) : false;
-    btn.disabled = !enabled || full;
-    btn.classList.toggle('active', enabled && !full);
-  });
-  // Sync header number styles too
   document.querySelectorAll('.col-hdr').forEach(el => {
     const i = parseInt(el.dataset.col);
     const full = board ? colFull(board,i) : false;
@@ -551,7 +509,7 @@ async function createRoom() {
 
   roomCode = code;
   myPlayer = P1;
-  await db.ref('rooms/'+code).set({ moves:'', scores:'0,0', ng:0, joined:false });
+  await db.ref('rooms/'+code).set({ moves:'', scores:'0,0', ng:0, joined:false, created: Date.now() });
   document.getElementById('display-code').textContent = code;
   show('screen-waiting');
 
@@ -739,6 +697,33 @@ function leaveGame() {
 }
 
 // ================================================================
+//  FIT BOARD TO FULL WIDTH
+//  Board row = 15 chars: |X X X X X X X|
+//  Ubuntu Mono char width ≈ 0.601 × font-size
+// ================================================================
+function fitBoard() {
+  const wrap = document.getElementById('board-display');
+  if (!wrap) return;
+  const containerWidth = wrap.parentElement.clientWidth;
+
+  // Measure actual character width at current font size by rendering one char
+  const probe = document.createElement('span');
+  probe.style.cssText = 'font-family:"Ubuntu Mono",monospace;font-size:16px;position:absolute;visibility:hidden;white-space:pre';
+  probe.textContent = 'X';
+  document.body.appendChild(probe);
+  const charW = probe.getBoundingClientRect().width;
+  document.body.removeChild(probe);
+
+  // Board row is exactly 15 chars: |X X X X X X X|
+  // Scale font-size so 15 chars = containerWidth exactly
+  const fs = Math.floor((containerWidth / charW) * 16 / 15);
+  wrap.style.fontSize = fs + 'px';
+
+}
+
+window.addEventListener('resize', fitBoard);
+
+// ================================================================
 //  KEYBOARD INPUT  — press 1-7 to drop a token
 // ================================================================
 document.addEventListener('keydown', e => {
@@ -749,10 +734,26 @@ document.addEventListener('keydown', e => {
 });
 
 // ================================================================
+//  CLEANUP — delete rooms older than 24 hours on lobby load
+// ================================================================
+function cleanOldRooms() {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
+  db.ref('rooms').once('value', snap => {
+    snap.forEach(child => {
+      const created = child.val().created;
+      if (!created || created < cutoff) {
+        db.ref('rooms/'+child.key).remove();
+      }
+    });
+  });
+}
+
+// ================================================================
 //  BOOT
 // ================================================================
 window.onload = () => {
   const ok = initFirebase();
+  if (ok) cleanOldRooms();
   if (!ok) document.getElementById('firebase-notice').style.display='block';
   renderBoard(createBoard());
 };
