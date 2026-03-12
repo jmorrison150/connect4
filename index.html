@@ -30,20 +30,14 @@
   body {
     background: #1a1a1a;
     font-family: 'Ubuntu Mono', 'Courier New', monospace;
-    height: 100vh;
-    overflow-y: auto;   /* scroll safety net */
+    min-height: 100vh;
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     justify-content: center;
+    padding: 20px 0 40px;
   }
 
-  #app {
-    width: 100%;
-    max-width: 460px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-  }
+  #app { width: 100%; max-width: 460px; padding: 0 12px; }
 
   /* Window chrome */
   .titlebar {
@@ -67,31 +61,14 @@
     border: 1px solid #111;
     border-top: none;
     border-radius: 0 0 6px 6px;
-    padding: 8px 8px 8px;
+    padding: 16px 14px 20px;
     color: var(--text);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: visible;
-  }
-
-  /* Game screen fills terminal height */
-  #screen-game { flex: 1; }
-
-  /* Board wrap takes all remaining space */
-  .boardwrap {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    margin: 2px 0;
+    min-height: 300px;
   }
 
   /* Screens */
-  .screen { display: none !important; }
-  .screen.active { display: block !important; }
-
-  /* Game screen overrides to flex so board can flex-grow */
-  #screen-game.active { display: flex !important; flex-direction: column; }
+  .screen { display: none; }
+  .screen.active { display: block; }
 
   /* Prompt */
   .prompt { font-size: 14px; line-height: 1.6; margin-bottom: 2px; }
@@ -123,6 +100,8 @@
   .mt-o { color: var(--ubuntu); }
   .mt-r { color: var(--red); }
   .mt-c { color: var(--cyan); }
+  .mt-s { color: var(--green); }
+  .mt-s { color: var(--green); }  /* Solver option */
 
   /* Input */
   .irow { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
@@ -157,15 +136,16 @@
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
   /* Scoreboard */
-  .scores { margin-bottom: 2px; }
+  .scores { margin-bottom: 6px; }
 
-  /* Board — fills full terminal width, font size set by JS */
+  /* Board */
+  .boardwrap { margin: 6px 0; }
   .bpre {
     font-family: 'Ubuntu Mono', monospace;
-    font-size: 16px; /* overridden by fitBoard() */
-    line-height: 1.5;
+    font-size: clamp(13px, 3.8vw, 17px);
+    line-height: 1.55;
     white-space: pre;
-    display: block;
+    display: inline-block;
     color: var(--text);
   }
   /* Clickable column header numbers */
@@ -189,19 +169,44 @@
   .cw  { animation: wblink 0.45s step-end infinite; font-weight: 700; }
   @keyframes wblink { 0%,100%{opacity:1} 50%{opacity:0.1} }
 
-
+  /* Column buttons */
+  .colbtns {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin: 8px 0;
+  }
+  .cbtn {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: 'Ubuntu Mono', monospace;
+    font-size: 16px;
+    padding: 11px 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.08s;
+  }
+  .cbtn.active { border-color: #666; color: var(--text); }
+  .cbtn:hover:not(:disabled), .cbtn:active:not(:disabled) {
+    background: #3d1500;
+    border-color: var(--ubuntu);
+    color: var(--ubuntu);
+  }
+  .cbtn:disabled { opacity: 0.25; cursor: not-allowed; }
 
   /* Status */
-  .status { font-size: 13px; line-height: 1.6; min-height: 20px; margin: 2px 0; }
+  .status { font-size: 14px; line-height: 1.8; min-height: 22px; }
   .st-wait { color: var(--dim); }
-  .st-p1   { color: var(--cyan); }
-  .st-p2   { color: var(--orange); }
+  .st-turn { color: var(--green); }
   .st-win  { color: var(--ubuntu); font-weight: 700; }
   .st-lose { color: var(--red); }
   .st-draw { color: var(--dim); }
+  .st-solver { color: var(--green); }
+  .st-solver { color: var(--green); }
 
   /* Move string display */
-  .movestr { color: var(--border); font-size: 11px; margin-top: 2px; }
+  .movestr { color: var(--border); font-size: 12px; margin-top: 4px; }
   .movestr b { color: #666; }
 
   hr.t { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
@@ -225,7 +230,9 @@
   .fb-dot.disconnected { background: var(--red); }
   .fb-status { font-size: 11px; color: var(--dim); }
 
-  .err { color: var(--red); font-size: 13px; min-height: 20px; margin-top: 4px; }
+  .err { color: var(--red);
+  .solver-badge { background: var(--green); color: #000; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+  .solver-badge { background: var(--green); color: #000; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; margin-left: 8px; } font-size: 13px; min-height: 20px; margin-top: 4px; }
 
   .notice {
     border-left: 3px solid var(--red);
@@ -274,7 +281,10 @@
           <span class="pd">&gt;&nbsp;</span><span class="mt">[1] Create a new room</span>
         </button>
         <button class="mbtn" onclick="focusJoin()">
-          <span class="pd">&gt;&nbsp;</span><span class="mt mt-o">[2] Join existing room</span>
+          <span class="pd">&gt;&nbsp;</span><span class="mt mt-o">[2] Join existing room
+        <button class="mbtn" onclick="playVsSolver()">
+          <span class="pd">>&nbsp;</span><span class="mt mt-s">[3] Play vs Solver (room 0000)</span>
+        </button></span>
         </button>
       </div>
 
@@ -315,24 +325,43 @@
     <!-- ── GAME ───────────────────────────────────── -->
     <div id="screen-game" class="screen">
 
-      <div class="out" style="margin-bottom:4px;font-size:13px">Player 1 <span class="p1c">(X)</span>: <b id="score-p1">0</b> &nbsp;&nbsp; Player 2 <span class="p2c">(0)</span>: <b id="score-p2">0</b></div>
+      <div class="scores">
+        <div class="odash">------------------------------</div>
+        <div class="out">&nbsp;&nbsp;SCOREBOARD</div>
+        <div class="odash">------------------------------</div>
+        <div class="out">Player 1 <span class="p1c">(X)</span>: <b id="score-p1">0</b></div>
+        <div class="out">Player 2 <span class="p2c">(0)</span>: <b id="score-p2">0</b><span id="solver-badge" class="solver-badge" style="display:none">SOLVER</span></div>
+        <div class="odash">------------------------------</div>
+      </div>
 
       <div class="boardwrap">
         <div class="bpre" id="board-display"></div>
       </div>
 
-
+      <div class="colbtns" id="col-buttons">
+        <button class="cbtn" onclick="playColumn(0)">1</button>
+        <button class="cbtn" onclick="playColumn(1)">2</button>
+        <button class="cbtn" onclick="playColumn(2)">3</button>
+        <button class="cbtn" onclick="playColumn(3)">4</button>
+        <button class="cbtn" onclick="playColumn(4)">5</button>
+        <button class="cbtn" onclick="playColumn(5)">6</button>
+        <button class="cbtn" onclick="playColumn(6)">7</button>
+      </div>
 
       <div class="status" id="game-status"></div>
 
       <!-- Raw move string — shows exactly what Firebase stores -->
       <div class="movestr"><b>moves: </b>"<span id="move-str-display"></span>"</div>
 
+      <hr class="t">
+
       <button class="mbtn" id="new-game-btn" onclick="requestNewGame()" style="display:none">
         <span class="pd">&gt;&nbsp;</span><span class="mt mt-c">Play again? (y/n): y ↵</span>
       </button>
 
-
+      <button class="mbtn" onclick="leaveGame()">
+        <span class="pd">&gt;&nbsp;</span><span class="mt mt-r">^C&nbsp;&nbsp;Leave game</span>
+      </button>
 
       <div class="odim" style="margin-top:8px;font-size:12px">
         Room: <b id="game-room-code">----</b> &nbsp;|&nbsp; You are: <b id="player-badge">?</b> &nbsp;|&nbsp;<span class="fb-dot" id="fb-dot"></span><span class="fb-status" id="fb-status">connecting...</span>
@@ -343,6 +372,167 @@
 </div>
 
 <script>
+
+// ===================== SOLVER (Pure JS) =====================
+
+
+class Position {
+  constructor() {
+    this.board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+    this.currentPlayer = P1;
+  }
+  isValidColumn(col) { return col >= 0 && col < COLS && this.board[0][col] === EMPTY; }
+  getValidColumns() { const cols = []; for (let c = 0; c < COLS; c++) if (this.isValidColumn(c)) cols.push(c); return cols; }
+  play(col) {
+    if (!this.isValidColumn(col)) return false;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (this.board[r][col] === EMPTY) { this.board[r][col] = this.currentPlayer; break; }
+    }
+    this.currentPlayer = this.currentPlayer === P1 ? P2 : P1;
+    return true;
+  }
+  isWin(player) {
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c <= COLS - 4; c++) 
+      if (this.board[r][c] == player && this.board[r][c+1] == player && this.board[r][c+2] == player && this.board[r][c+3] == player) return true;
+    for (let r = 0; r <= ROWS - 4; r++) for (let c = 0; c < COLS; c++) 
+      if (this.board[r][c] == player && this.board[r+1][c] == player && this.board[r+2][c] == player && this.board[r+3][c] == player) return true;
+    for (let r = 0; r <= ROWS - 4; r++) for (let c = 0; c <= COLS - 4; c++) 
+      if (this.board[r][c] == player && this.board[r+1][c+1] == player && this.board[r+2][c+2] == player && this.board[r+3][c+3] == player) return true;
+    for (let r = 3; r < ROWS; r++) for (let c = 0; c <= COLS - 4; c++) 
+      if (this.board[r][c] == player && this.board[r-1][c+1] == player && this.board[r-2][c+2] == player && this.board[r-3][c+3] == player) return true;
+    return false;
+  }
+  isFull() { return this.board[0].every(c => c !== EMPTY); }
+  getCurrentPlayer() { return this.currentPlayer; }
+  clone() { const pos = new Position(); pos.board = this.board.map(row => [...row]); pos.currentPlayer = this.currentPlayer; return pos; }
+  static fromMoveString(moves) {
+    const pos = new Position();
+    for (const c of moves) { const col = parseInt(c) - 1; if (!pos.play(col)) break; }
+    return pos;
+  }
+}
+
+class Solver {
+  constructor(maxDepth = 8) { this.maxDepth = maxDepth; }
+  solveRec(pos, depth, alpha, beta) {
+    if (pos.isWin(P1) || pos.isWin(P2)) return -(this.maxDepth * 10 - depth);
+    if (pos.isFull() || depth >= this.maxDepth) return this.evaluate(pos);
+    const validCols = pos.getValidColumns();
+    if (validCols.length === 0) return 0;
+    let bestScore = -Infinity;
+    for (const col of validCols) {
+      const nextPos = pos.clone();
+      nextPos.play(col);
+      const score = -this.solveRec(nextPos, depth + 1, -beta, -Math.max(alpha, bestScore));
+      bestScore = Math.max(bestScore, score);
+      if (bestScore >= beta) break;
+    }
+    return bestScore;
+  }
+  evaluate(pos) {
+    let score = 0;
+    const player = pos.getCurrentPlayer();
+    const opponent = player === P1 ? P2 : P1;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (c + 3 < COLS) score += this.scoreLine([pos.board[r][c], pos.board[r][c+1], pos.board[r][c+2], pos.board[r][c+3]], player, opponent);
+      if (r + 3 < ROWS) score += this.scoreLine([pos.board[r][c], pos.board[r+1][c], pos.board[r+2][c], pos.board[r+3][c]], player, opponent);
+      if (r + 3 < ROWS && c + 3 < COLS) score += this.scoreLine([pos.board[r][c], pos.board[r+1][c+1], pos.board[r+2][c+2], pos.board[r+3][c+3]], player, opponent);
+      if (r >= 3 && c + 3 < COLS) score += this.scoreLine([pos.board[r][c], pos.board[r-1][c+1], pos.board[r-2][c+2], pos.board[r-3][c+3]], player, opponent);
+    }
+    return score;
+  }
+  scoreLine(line, player, opponent) {
+    const p = line.filter(x => x === player).length;
+    const o = line.filter(x => x === opponent).length;
+    const e = line.filter(x => x === EMPTY).length;
+    if (p === 4) return 10000;
+    if (p === 3 && e === 1) return 100;
+    if (p === 2 && e === 2) return 10;
+    if (o === 3 && e === 1) return -100;
+    return 0;
+  }
+  analyze(position) {
+    const scores = [];
+    for (let col = 0; col < COLS; col++) {
+      if (!position.isValidColumn(col)) { scores.push(col === 0 ? -Infinity : Infinity); continue; }
+      const nextPos = position.clone();
+      nextPos.play(col);
+      if (nextPos.isWin(P1)) scores.push(1000);
+      else if (nextPos.isWin(P2)) scores.push(-1000);
+      else if (nextPos.isFull()) scores.push(0);
+      else scores.push(-this.solveRec(nextPos, 0, -Infinity, Infinity));
+    }
+    return scores;
+  }
+  getBestMove(position) {
+    const scores = this.analyze(position);
+    let bestCol = position.getValidColumns()[0];
+    let bestScore = -Infinity;
+    for (let col = 0; col < COLS; col++) {
+      if (!position.isValidColumn(col)) continue;
+      if (scores[col] > bestScore) { bestScore = scores[col]; bestCol = col; }
+    }
+    return bestCol;
+  }
+}
+
+const solver = new Solver(10);
+
+// ===================== SOLVER GAME =====================
+let isSolverGame = false;
+
+function playVsSolver() {
+  roomCode = '0000';
+  myPlayer = P1;
+  isSolverGame = true;
+  document.getElementById('solver-badge').style.display = 'inline';
+  enterGame('0000');
+}
+
+function solverMove() {
+  if (gameOver || myPlayer !== P2) return;
+  setStatus('Solver thinking...', 'st-solver');
+  setCols(false, null);
+  const pos = Position.fromMoveString(moveStr);
+  const col = solver.getBestMove(pos);
+  const board = replayMoves(moveStr);
+  dropToken(board, col, P2);
+  moveStr = moveStr + String(col);
+  renderSolverGame();
+}
+
+function renderSolverGame() {
+  const board = replayMoves(moveStr);
+  const turn = moveStr.length % 2 === 0 ? P1 : P2;
+  const last = moveStr.length > 0 ? (moveStr.length % 2 === 0 ? P2 : P1) : null;
+  const winPos = last ? checkWin(board, last) : null;
+  const draw = !winPos && isFull(board);
+  gameOver = !!(winPos || draw);
+  renderBoard(board, winPos);
+  const sym = p => p === P1 ? 'X' : '0';
+  if (winPos) {
+    if (last === myPlayer) { setStatus('Player ' + myPlayer + ' (' + sym(myPlayer) + ') WINS!', 'st-win'); scores[myPlayer]++; }
+    else { setStatus('Solver wins.', 'st-lose'); scores[P2]++; }
+    updateScores(); setCols(false); document.getElementById('new-game-btn').style.display = 'block';
+  } else if (draw) {
+    setStatus("Draw! The board is full.", 'st-draw'); setCols(false); document.getElementById('new-game-btn').style.display = 'block';
+  } else {
+    if (turn === myPlayer) { setStatus('Your turn (' + sym(myPlayer) + ')', 'st-turn'); setCols(true, board); }
+    else { setStatus('Solver thinking...', 'st-solver'); setCols(false); setTimeout(() => solverMove(), 100); }
+  }
+  document.getElementById('move-str-display').textContent = moveStr;
+}
+
+function handleSolverGame() {
+  roomCode = '0000'; moveStr = ''; scores = {1:0,2:0}; gameOver = false;
+  document.getElementById('game-room-code').textContent = '0000';
+  document.getElementById('player-badge').textContent = 'Player 1  X (cyan)';
+  document.getElementById('player-badge').style.color = 'var(--cyan)';
+  document.getElementById('new-game-btn').style.display = 'none';
+  updateScores(); show('screen-game');
+  renderSolverGame();
+}
+
 // ================================================================
 //  FIREBASE CONFIG
 //  Replace with your own project values.
@@ -469,15 +659,8 @@ function renderBoard(board, winPos) {
     }
     out += row + '|\n';
   }
-  out += '+' + '-'.repeat(COLS*2-1) + '\n';
-  // Footer row — mirrors header, same clickable col-hdr spans
-  const footerCells = Array.from({length:COLS},(_,i) =>
-    `<span class="col-hdr" data-col="${i}" onclick="playColumn(${i})">${i+1}</span>`
-  ).join(' ');
-  out += ' ' + footerCells;
+  out += '+' + '-'.repeat(COLS*2-1) + '+';
   document.getElementById('board-display').innerHTML = out;
-
-  fitBoard();
 }
 
 // ================================================================
@@ -495,6 +678,12 @@ function setStatus(msg, cls) {
 }
 
 function setCols(enabled, board) {
+  document.querySelectorAll('.cbtn').forEach((btn,i) => {
+    const full = board ? colFull(board,i) : false;
+    btn.disabled = !enabled || full;
+    btn.classList.toggle('active', enabled && !full);
+  });
+  // Sync header number styles too
   document.querySelectorAll('.col-hdr').forEach(el => {
     const i = parseInt(el.dataset.col);
     const full = board ? colFull(board,i) : false;
@@ -532,7 +721,7 @@ async function createRoom() {
 
   roomCode = code;
   myPlayer = P1;
-  await db.ref('rooms/'+code).set({ moves:'', scores:'0,0', ng:0, joined:false, created: Date.now() });
+  await db.ref('rooms/'+code).set({ moves:'', scores:'0,0', ng:0, joined:false });
   document.getElementById('display-code').textContent = code;
   show('screen-waiting');
 
@@ -546,8 +735,14 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  if (!db) { document.getElementById('firebase-notice').style.display='block'; return; }
   const v = document.getElementById('join-code').value.trim();
+  if (v === '0000') {
+    roomCode = v; myPlayer = P1; isSolverGame = true;
+    document.getElementById('solver-badge').style.display = 'inline';
+    handleSolverGame(); return;
+  }
+
+  if (!db) { document.getElementById('firebase-notice').style.display='block'; return; }
   if (!/^\d{4}$/.test(v)) { lobbyErr('Enter a 4-digit code'); return; }
 
   const snap = await db.ref('rooms/'+v).once('value');
@@ -571,6 +766,7 @@ function cancelRoom() {
 //  GAME
 // ================================================================
 function enterGame(code) {
+  if (isSolverGame) { handleSolverGame(); return; }
   roomCode=code; moveStr=''; scores={1:0,2:0}; gameOver=false;
   document.getElementById('game-room-code').textContent = code;
   const badge = myPlayer===P1 ? 'Player 1  X (cyan)' : 'Player 2  0 (red)';
@@ -624,6 +820,8 @@ function enterGame(code) {
 let prevMoveLen = 0;
 
 function renderGameState() {
+  if (isSolverGame) { renderSolverGame(); return; }
+
   const board = replayMoves(moveStr);
   const turn  = moveStr.length%2===0 ? P1 : P2;
   const last  = moveStr.length>0 ? (moveStr.length%2===0 ? P2 : P1) : null;
@@ -679,10 +877,10 @@ function renderGameState() {
     setCols(false); document.getElementById('new-game-btn').style.display='block';
   } else {
     if (turn===myPlayer) {
-      setStatus(`Player ${myPlayer}'s turn (${sym(myPlayer)})`, myPlayer===P1?'st-p1':'st-p2');
+      setStatus(`Player ${myPlayer}'s turn (${sym(myPlayer)})`, 'st-turn');
       setCols(true, board);
     } else {
-      setStatus(`Player ${turn}'s turn (${sym(turn)})`, turn===P1?'st-p1':'st-p2');
+      setStatus(`Player ${turn}'s turn (${sym(turn)})`, 'st-wait');
       setCols(false);
     }
   }
@@ -720,41 +918,6 @@ function leaveGame() {
 }
 
 // ================================================================
-//  FIT BOARD TO FULL WIDTH
-//  Board row = 15 chars: |X X X X X X X|
-//  Ubuntu Mono char width ≈ 0.601 × font-size
-// ================================================================
-function fitBoard() {
-  const wrap = document.getElementById('board-display');
-  if (!wrap) return;
-
-  // Measure actual char dimensions at 16px
-  const probe = document.createElement('span');
-  probe.style.cssText = 'font-family:"Ubuntu Mono",monospace;font-size:16px;position:absolute;visibility:hidden;white-space:pre';
-  probe.textContent = 'X';
-  document.body.appendChild(probe);
-  const charW = probe.getBoundingClientRect().width;
-  const charH = probe.getBoundingClientRect().height;
-  document.body.removeChild(probe);
-
-  // ── Horizontal: font-size so 15 chars fill the container width ──
-  const containerWidth = wrap.parentElement.clientWidth;
-  const fs = Math.floor((containerWidth / charW) * 16 / 15);
-  wrap.style.fontSize = fs + 'px';
-
-  // ── Vertical: line-height so 10 board lines fit in ~55% of viewport ──
-  // Board: hdr + top-border + 6 rows + bot-border + footer = 10 lines
-  // Target ~55vh for the board, leaving room for scoreboard/status/info
-  const targetBoardPx = window.innerHeight * 0.55;
-  const lineHeightPx  = targetBoardPx / 10;
-  const lh = lineHeightPx / fs;
-  // Clamp between 0.85 (tight) and 1.8 (loose)
-  wrap.style.lineHeight = Math.max(0.85, Math.min(1.8, lh)).toFixed(3);
-}
-
-window.addEventListener('resize', fitBoard);
-
-// ================================================================
 //  KEYBOARD INPUT  — press 1-7 to drop a token
 // ================================================================
 document.addEventListener('keydown', e => {
@@ -765,26 +928,10 @@ document.addEventListener('keydown', e => {
 });
 
 // ================================================================
-//  CLEANUP — delete rooms older than 24 hours on lobby load
-// ================================================================
-function cleanOldRooms() {
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
-  db.ref('rooms').once('value', snap => {
-    snap.forEach(child => {
-      const created = child.val().created;
-      if (!created || created < cutoff) {
-        db.ref('rooms/'+child.key).remove();
-      }
-    });
-  });
-}
-
-// ================================================================
 //  BOOT
 // ================================================================
 window.onload = () => {
   const ok = initFirebase();
-  if (ok) cleanOldRooms();
   if (!ok) document.getElementById('firebase-notice').style.display='block';
   renderBoard(createBoard());
 };
